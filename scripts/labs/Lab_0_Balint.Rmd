@@ -1,0 +1,348 @@
+---
+title: "Lab 0"
+author: "Sawyer Balint"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+library(tidyverse) #for graphing and wrangling
+library(ggsci) #for colors
+library(here) #to make the working directory stuff easier
+```
+
+
+```{r}
+#create a custom graphing theme to reduce repetition
+theme <- list(
+  theme_classic(),
+  scale_color_jco(),
+  scale_fill_jco(),
+  scale_shape_manual(values=c(21:25)),
+  theme(legend.title=element_blank(),
+        legend.position="inside",
+        legend.position.inside=c(0.2,0.8))
+)
+
+```
+# First we model
+
+## Population 1: constant cross-section
+
+```{r}
+#normal distribution of lengths
+lengths <- runif(n=100, min=1, max=200)
+
+#i'm also modeling density as a distribution because i want some noise
+density <- runif(n=100, min=0.9, max=1.1)
+
+#create dataframe of volume
+cylinders.df <- data.frame(length=lengths,
+                           density=density) %>%
+  mutate(height=1,
+         width=1,
+         volume=pi*(height/2)*(width/2)*length,
+         mass=volume*density)
+
+#check data structure
+str(cylinders.df)
+
+#relationship between length and mass
+plot <- ggplot(cylinders.df, aes(length, mass))+
+  theme+
+  geom_point(shape=21, fill="grey")+
+  geom_smooth(method="lm", color="black", linewidth=0.5)
+
+plot
+
+#add log axes to plot
+plot +
+  scale_y_log10()+
+  scale_x_log10()+
+  annotation_logticks()
+
+#make a model
+cylinders.lm <- lm(log(cylinders.df$mass)~(log(cylinders.df$length)))
+summary(cylinders.lm)
+
+slope1 <- coefficients(cylinders.lm)[2]
+  
+```
+
+## Population 2: cross-section changes in proportion to length
+
+```{r}
+# code for cylindrical fish population 2
+
+#relationship between width and height (nominally 0.1)
+#I'm adding adding some noise for fun
+width_factor <- runif(n=100, min=0.09, max=0.11)
+
+cylinders.df <- cylinders.df %>%
+  mutate(height=length*width_factor,
+         width=height,
+         volume=pi*(height/2)*(width/2)*length,
+         mass=volume*density)
+
+#make base plot
+plot <- ggplot(cylinders.df, aes(length, mass))+
+  theme+
+  geom_point(shape=21, fill="grey")
+
+#print the plot
+plot
+
+#make it log
+plot + 
+  scale_x_log10()+
+  scale_y_log10()+
+  annotation_logticks()
+
+#make a model
+cylinders.lm <- lm(log(cylinders.df$mass)~(log(cylinders.df$length)))
+summary(cylinders.lm)
+
+slope2 <- coefficients(cylinders.lm)[2]
+  
+```
+
+Challenge scenario 1
+
+```{r}
+
+#chonky fish
+width_factor <- runif(n=100, min=0.23, max=0.27)
+
+cylinders.df <- cylinders.df %>%
+  mutate(height=length*width_factor,
+         width=height,
+         volume=pi*(height/2)*(width/2)*length,
+         mass=volume*density)
+
+#make base plot
+plot <- ggplot(cylinders.df, aes(length, mass))+
+  theme+
+  geom_point(shape=21, fill="grey")
+
+#print the plot
+plot
+
+#make it log
+plot + 
+  scale_x_log10()+
+  scale_y_log10()+
+  annotation_logticks()
+
+#make a model
+cylinders.lm <- lm(log(cylinders.df$mass)~(log(cylinders.df$length)))
+summary(cylinders.lm)
+
+#thin fish
+cylinders.df <- cylinders.df %>%
+  mutate(width=length*width_factor,
+         height=length,
+         volume=pi*(height/2)*(width/2)*length,
+         mass=volume*density)
+
+#make base plot
+plot <- ggplot(cylinders.df, aes(length, mass))+
+  theme+
+  geom_point(shape=21, fill="grey")
+
+#print the plot
+plot
+
+#make it log
+plot + 
+  scale_x_log10()+
+  scale_y_log10()+
+  annotation_logticks()
+
+#make a model
+cylinders.lm <- lm(log(cylinders.df$mass)~(log(cylinders.df$length)))
+summary(cylinders.lm)
+
+
+```
+Challenge scenario 2
+
+```{r}
+#nonlinear
+cylinders.df <- cylinders.df %>%
+  mutate(height=sqrt(length),
+         volume=pi*(height/2)*(width/2)*length,
+         mass=volume*density)
+
+#make base plot
+plot <- ggplot(cylinders.df, aes(length, mass))+
+  theme+
+  geom_point(shape=21, fill="grey")
+
+#print the plot
+plot
+
+#make it log
+plot + 
+  scale_x_log10()+
+  scale_y_log10()+
+  annotation_logticks()
+
+#make a model
+cylinders.lm <- lm(log(cylinders.df$mass)~(log(cylinders.df$length)))
+summary(cylinders.lm)
+
+```
+The slope of the model (log(A)) has changed, but the intercept remains the same.
+
+Challenge scenario 3
+
+```{r}
+#change density from 1 to 2
+cylinders.df$density <- runif(n=100, min=1.9, max=2.1)
+
+cylinders.df <- cylinders.df %>%
+  mutate(mass=volume*density)
+
+#make base plot
+plot <- ggplot(cylinders.df, aes(length, mass))+
+  theme+
+  geom_point(shape=21, fill="grey")
+
+#print the plot
+plot
+
+#make it log
+plot + 
+  scale_x_log10()+
+  scale_y_log10()+
+  annotation_logticks()
+
+#make a model
+cylinders.lm <- lm(log(cylinders.df$mass)~(log(cylinders.df$length)))
+summary(cylinders.lm)
+
+```
+
+I increased the density from 1 to 2. The intercept of the model has changed, but the slope of log(A) has remained the same. This suggests that the proportionality of the relationship between length and weight has not changed, but fishes have become systematically heavier.
+
+**QUESTION: Pay attention to the slopes of the models fitted with lm() -- i.e., the slope of the line in the log(length)-log(weight) plots. What do these slopes tell you about how length and weight are related?**
+
+The slope of the first population is `r round(slope1, digits=2)`, compared to `r round(slope2, digits=2)` for the second population. In the first population, weight exhibits a 1:1 relationship with length (i.e., a fish that is twice the length is also twice the weight) while in the second population, weight is 3*log(length) (i.e., a fish that is twice as long will have more than twice the weight, although the change in weight in non-linear.)
+
+**QUESTION: Based on this geometric example, make a prediction about what you'd expect to see (in the plots and/or coefficients) if we do this analysis on a population of real fish that grow in length faster than they grow in cross-section. What about a population that grows proportionally?**
+
+A population of fish that grows faster in length will look more similar to cylinder population 1 than cylinder population 2. The coefficient of log(1A) will be closer to 1.
+
+Population 2 meets the definition of a population of fish that grows proportionally. Thus, the plots will look similar to population 2 and the coefficient of log(1A) will be approximately 3. Indeed, in the below example we find that the coefficient of log(1A) for most fish is around 3.
+
+# Where do real fish fit in?
+
+```{r}
+#use the here package as an alternative to setwd()
+df <- read.table(here("raw/labs/Lab 0 - pone.0156641.s002.csv"),
+                 sep=",", header=TRUE)
+
+str(df)
+```
+
+```{r}
+# subset the data to look at one species
+# do the same length vs weight analysis as you did for the simulated cylinder data. You should show a plot (or two) and the model coefficients estimated with lm().
+
+# analyze Cubera snapper
+subset.df <- df %>%
+  filter(name %in% c("Lutjanidae_Lutjanus_cyanopterus",
+                     "Acanthuridae_Acanthurus_chirurgus",
+                     "Lutjanidae_Lutjanus_mahogoni")) %>%
+  mutate(common_name = factor(name, 
+                              levels=c("Lutjanidae_Lutjanus_cyanopterus",
+                                       "Acanthuridae_Acanthurus_chirurgus",
+                                       "Lutjanidae_Lutjanus_mahogoni"),
+                              labels=c("Cubera snapper",
+                                       "Doctorfish",
+                                       "Mahoney snapper")))
+
+#make base plot
+plot <- ggplot(subset.df, aes(length.mm, weight.g, 
+                              fill=common_name,
+                              shape=common_name))+
+  theme+
+  geom_point()+
+  labs(x="Length (mm)",
+       y="Weight (g)")
+
+plot
+
+plot + 
+  scale_x_log10()+
+  scale_y_log10()+
+  annotation_logticks()+
+  geom_smooth(aes(color=common_name), method="lm", se=FALSE, linewidth=0.5)
+
+#make a model for species 1
+lm1 <- lm(log(weight.g)~(log(length.mm)),
+         data=subset(subset.df, common_name=="Cubera snapper"))
+summary(lm1)
+
+#make a model for species 2
+lm2 <- lm(log(weight.g)~(log(length.mm)),
+         data=subset(subset.df, common_name=="Doctorfish"))
+summary(lm2)
+
+#make a model for species 2
+lm3 <- lm(log(weight.g)~(log(length.mm)),
+         data=subset(subset.df, common_name=="Mahoney snapper"))
+summary(lm3)
+
+
+```
+
+**QUESTION: How well do your estimates match? Ask around the class. Are the errors systematic? Are the "eating fish" getting chunkier?**
+
+As shown in the figure below, my estimates for log(A) are fairly accurate but my estimates for B are systematically more negative. This suggests that fish were historically more chonky than they are today.
+
+```{r}
+
+common_name <- c("Cubera snapper", "Doctorfish", "Mahoney snapper")
+
+logA <- c(coefficients(lm1)[2],
+          coefficients(lm2)[2],
+          coefficients(lm3)[2])
+
+B <- c(coefficients(lm1)[1],
+       coefficients(lm2)[1],
+       coefficients(lm3)[1])
+
+observed.df <- data.frame(common_name=common_name, 
+                          logA=logA, 
+                          B=B) %>%
+  mutate(type="Present")
+
+actual.df <- data.frame(common_name=common_name,
+                        logA=c(3.0601, 3.5328, 2.7190),
+                        B=c(-4.8799, -5.9255, -4.0870))%>%
+  mutate(type="Historical")
+
+df <- bind_rows(observed.df, actual.df) %>%
+  pivot_longer(cols=c("logA", "B"))
+
+ggplot(df, aes(common_name, value, fill=type))+
+  theme+
+  geom_col(color="black", position="dodge")+
+  facet_wrap(.~name, ncol=1, scales="free_y", strip.position = "left")+
+  geom_hline(yintercept=0)+
+  labs(x=NULL, y=NULL)+
+  theme(strip.placement="outside",
+        strip.background=element_blank(),
+        legend.position="top")
+
+```
+
+**QUESTION: "All models are wrong, some models are useful." We used two different types of models today. 1) We used geometric models (cylinders) to approximate the body shape of fish. 2) We used a linear model (the lm() function in R) to describe the relationship between log(length) and log(weight). In what ways were each of these models wrong (i.e., what did they leave out)? Were they useful?**
+
+The geometric models simplified the actual shape of the fish: for a given length, width, and height the actual volume of the fish is not the same as the volume of a cylinder. However, fish are likely more similar to a cylinder than a cube or a sphere, and perhaps the mass of the fish calculated from the estimated volume is useful.
+
+Similarly, the linear models predicted fish weight from length but did not account for variations in the "chunkiness" of individuals within a population or variations in density. Length is undoubtedly a useful predictor of fish weight - the R squared of all three models is approximately 1 - but any variations in fish weight that are not related to length are not captured by the model.
