@@ -1,0 +1,286 @@
+---
+title: "Lab 1"
+author: "Sawyer Balint"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE}
+#import packages
+library(tidyverse) #for data wrangling
+library(here) #for filepath management
+library(ggsci) #for colors
+```
+
+```{r}
+#custon graphing theme
+theme <- list(
+  theme_classic(),
+  scale_fill_jama(),
+  theme(legend.position="none")
+)
+
+```
+      
+
+
+### 1. "TASK: Estimate the size of your *in plastico* fish population."
+
+```{r, warning=FALSE}
+#import data
+plastico.df <- read.csv(here("raw/labs/lab1.csv"))
+
+#estimate N
+plastico.df <- plastico.df %>%
+  mutate(N=m*K/r)
+
+#calculate mean
+plastico_estimate <- plastico.df$N %>%
+  mean() %>%
+  round(digits=1)
+
+```
+
+We conducted three rounds of mark and recapture. Our mean estimate was `r plastico_estimate`, which compared favorably to the actual population size of 21.
+
+
+### 2. "TASK: Using code described above, generate an equivalent data set *in silico* to what you generated *in plastico*. Are the results similar? Decide on a way to plot them to make a graphical comparison."
+
+```{r}
+
+#population size
+N <- 21
+
+#empty list to store results
+result.list <- list()
+
+#iterate three times
+for (i in 1:3){
+  
+  #for each iteration...
+  silico.df <- data.frame( #new dataframe
+    m = round(runif(N)), #random m
+    K = round(runif(N)) #random K
+    ) %>%
+    mutate(r = ifelse(m == 1 & K == 1, 1, 0)) %>% #calculate r
+    summarize_all(sum) %>% #sum
+    mutate(N=m*K/r, #calculate N
+           iteration=i) #log iteration
+  
+  #append result
+  result.list <- append(result.list, list(silico.df))
+  
+}
+
+#final dataframe
+silico.df <- bind_rows(result.list)
+
+silico_estimate <- silico.df$N %>%
+  mean() %>%
+  round(digits=1)
+
+```
+
+Compared to my *in plastico* experiment, which had a result of `r plastico_estimate`, I got an estimate of `r silico_estimate`. However, any variation between the two is likely due to the small sample size - I only did three replicates of each experiment.
+
+
+### 3. "TASK: Now repeat the *in silico* experiment many more times (let's say five hundred). What is your estimate of the population size? You should get something noticably larger than the actual population size. Try it again! Same result? What gives!?"
+
+```{r}
+
+#empty list to store results
+result.list <- list()
+
+#iterate 500 times
+for (i in 1:500){
+  
+  #for each iteration...
+  silico.df <- data.frame( #new dataframe
+    m = round(runif(N)), #random m
+    K = round(runif(N)) #random K
+    ) %>%
+    mutate(r = ifelse(m == 1 & K == 1, 1, 0)) %>% #calculate r
+    summarize_all(sum) %>% #sum
+    mutate(N=m*K/r, #calculate N
+           iteration=i) #log iteration
+  
+  #append result
+  result.list <- append(result.list, list(silico.df))
+  
+}
+
+#final dataframe
+silico.df <- bind_rows(result.list)
+
+#look at the max - probably infinite
+max(silico.df$N)
+
+#remove infinate values
+silico.df <- silico.df %>%
+  filter(r != 0)
+
+#
+new_silico_estimate <- silico.df$N %>%
+  median() %>%
+  round(digits=1)
+
+#mak a graph
+ggplot(silico.df, aes(N)) +
+  theme+
+  geom_histogram(fill="grey", color="black")+
+  geom_vline(xintercept=N, color="darkred", linetype="dashed")+
+  scale_y_continuous(expand=expansion(mult=c(0,0.05)))+
+  labs(x="Estimated N")
+
+```
+
+If no marked fish are recaptured (r = 0), then the estimated population size will be infinity. Thus, we need to exclude estimates for which there are no recaptures. If we then calculate the median of the distribution, we end up with an estimate of `r new_silico_estimate` which is pretty accurate!
+
+
+### 3. CHALLENGE
+
+```{r}
+
+N <- 100000
+
+#empty list to store results
+result.list <- list()
+
+#iterate 500 times
+#this takes a while to run with large N
+for (i in 1:500){
+  
+  #for each iteration...
+  silico.df <- data.frame( #new dataframe
+    m = round(runif(N)), #random m
+    K = round(runif(N)) #random K
+    ) %>%
+    mutate(r = ifelse(m == 1 & K == 1, 1, 0)) %>% #calculate r
+    summarize_all(sum) %>% #sum
+    mutate(N=m*K/r, #calculate N
+           iteration=i) #log iteration
+  
+  #append result
+  result.list <- append(result.list, list(silico.df))
+  
+}
+
+#final dataframe
+silico.df <- bind_rows(result.list)
+
+#look at the max - this looks better
+max(silico.df$N)
+
+#make a graph
+ggplot(silico.df, aes(N)) +
+  theme+
+  geom_histogram(fill="grey", color="black")+
+  geom_vline(xintercept=N, color="darkred", linetype="dashed")+
+  scale_y_continuous(expand=expansion(mult=c(0,0.05)))+
+  labs(x="Estimated N")
+
+#try again with a low N, but bayesian derivation
+N <- 50
+
+#empty list to store results
+result.list <- list()
+
+#iterate 500 times
+#this takes a while to run with large N
+for (i in 1:500){
+  
+  #for each iteration...
+  silico.df <- data.frame( #new dataframe
+    m = round(runif(N)), #random m
+    K = round(runif(N)) #random K
+    ) %>%
+    mutate(r = ifelse(m == 1 & K == 1, 1, 0)) %>% #bayesian derivation
+    summarize_all(sum) %>% #sum
+    mutate(N=(m+1)*(K+1)/(r+1)-1, #calculate N
+           iteration=i) #log iteration
+  
+  #append result
+  result.list <- append(result.list, list(silico.df))
+  
+}
+
+#final dataframe
+silico.df <- bind_rows(result.list)
+
+#look at the max - this looks better
+max(silico.df$N)
+
+#make a graph
+ggplot(silico.df, aes(N)) +
+  theme+
+  geom_histogram(fill="grey", color="black")+
+  geom_vline(xintercept=N, color="darkred", linetype="dashed")+
+  scale_y_continuous(expand=expansion(mult=c(0,0.05)))+
+  labs(x="Estimated N")
+
+
+```
+
+With a very large population size, it becomes nearly impossible for r to approximate zero, and thus the distribution of data is no longer skewed towards high values (divide by very low r). As the fraction of the population (re)captured decreases, this biases becomes more severe. The bayesian derivation aids with this problem.
+
+### 4. "TASK: Compute estimates of the 0.025 and 0.975 quantiles for an *in silico* mark-recapture experiment"
+
+```{r}
+#calculate CI from most recent mark-recapture (N=50, bayesian derivation)
+
+#empty list to store results
+result.list <- list()
+
+#perform bootstrapping
+for (i in 1:nrow(silico.df)){
+ bootstrap <- sample(silico.df$N, 100, replace=TRUE)
+ result.list <- append(result.list, mean(bootstrap))
+}
+
+#compile results
+bootstrap.list <- as.numeric(result.list)
+
+#calculate quantiles from bootstrap
+lower_CI <- quantile(bootstrap.list, probs=0.025) %>%
+  round(digits=1)
+upper_CI <- quantile(bootstrap.list, probs=0.975) %>%
+  round(digits=1)
+
+#new dataframe for plotting
+plot.df <- silico.df %>%
+  mutate(N_bootstrap = bootstrap.list) %>%
+  select(N, N_bootstrap) %>%
+  pivot_longer(cols=c("N", "N_bootstrap")) %>%
+  mutate(name=factor(name, levels=c("N","N_bootstrap"),
+                     labels=c("Observed","Bootstrapped")))
+
+#visualize the results
+ggplot(plot.df, aes(x=name, y=value, fill=name)) +
+  theme+
+  geom_violin(color="black", alpha=0.6)+
+  geom_boxplot(fill="white", width=0.05, outlier.shape=NA)+
+  geom_hline(yintercept=N, color="darkred", linetype="dashed")+
+  labs(x=NULL, y="Estimated N")
+
+```
+
+The 0.025 quantile is `r lower_CI`, and the 0.975 quantile is `r upper_CI`. The true population size of `r N` fits comfortably within the confidence intervals. To further visualize the data, I compared the observed and bootstrapped data using violin plots with integrated boxplots. The population size (`r N`) is indicated by the dashed red line.
+
+
+### Extension
+
+```{r}
+
+
+```
+
+
+### REFLECTION QUESTIONS
+1. Both *in plastico* and *in silico* models of mark and recapture are highly simplified. What is sorely missing? What is missing but won't necessarily matter?
+
+Both models do not account for variations in catchability due to fish size, age, or location. Additionally, the models to not include the natural mortality rate of the fish - it assumes that all of the marked fish are present when the recapture occurs. In reality, some of the population probably dies/migrates out of the habitat/is caught between the two sampling events, and this is not being captured by the models.
+
+
+

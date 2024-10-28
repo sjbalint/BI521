@@ -1,0 +1,53 @@
+---
+title: "Lab 1 Template"
+author: "Your Name Here"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+
+### 1. "TASK: Estimate the size of your *in plastico* fish population."
+
+```{r}
+# use m, K, and r to estimate N for 3 runs of your *in plastico* experiment.
+
+```
+
+**Text:** How does this compare to the true population size?
+
+
+### 2. "TASK: Using code described above, generate an equivalent data set *in silico* to what you generated *in plastico*. Are the results similar? Decide on a way to plot them to make a graphical comparison."
+
+```{r}
+#Three runs of your *in silico* simulation that are equivalent to the *in plastico* experiment. (You don't need to use a for loop here.)
+```
+
+**Text**: compare the outcomes of your *in silico* and *in plastico* experiments.
+
+
+### 3. "TASK: Now repeat the *in silico* experiment many more times (let's say five hundred). What is your estimate of the population size? You should get something noticably larger than the actual population size. Try it again! Same result? What gives!?"
+
+```{r}
+#your experiment repeated 500x in silico, and your overall estimate of the population size
+
+#some way to summarize and/or visualize the results of your experiment.
+```
+
+**Text**: what did you find?
+
+
+### 4. "TASK: Compute estimates of the 0.025 and 0.975 quantiles for an *in silico* mark-recapture experiment"
+
+```{r}
+#calculate the 0.025 and 0.975 quantiles
+```
+
+**Text**: A sentence or so about whether the true population size is within the confidence intervals (0.025-0.975 quantiles).
+
+
+
+
+### REFLECTION QUESTIONS
+1. Both *in plastico* and *in silico* models of mark and recapture are highly simplified. What is sorely missing? What is missing but won't necessarily matter?
