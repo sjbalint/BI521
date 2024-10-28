@@ -1,0 +1,85 @@
+---
+title: "Splines and over-fitting"
+output:
+  pdf_document: default
+  html_document: default
+date: "2023-11-14"
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+```
+
+## R Markdown
+
+Cell growth rate (per day) in diatom of genus Thalassiosira taken from Montagnes and Franklin 2001.
+
+```{r cars}
+
+
+f_temp <- function(sst){rlnorm(1,meanlog=log(0.014*sst + 0.25),sdlog = 0.1)}
+set.seed(2003)
+
+x_temp <- runif(30,min=10,max=20)
+y_growth_rate <- vapply(x_temp,f_temp,FUN.VALUE = 0)
+
+df_growth <- data.frame(temp=x_temp,growth_rate=y_growth_rate)
+```
+
+## Including Plots
+
+Let's just consider the first 10 data points and assume that's our initial data set.
+
+```{r pressure, echo=FALSE}
+df_growth %>% 
+  filter(row_number() <= 10) %>% 
+  ggplot(aes(x=temp,y=growth_rate)) + 
+  geom_point(shape=1) +
+  theme_bw() +
+  labs(x="Temperature (ºC)",y=bquote(Growth~Rate~(mu~day^-1)))
+```
+
+Fit a linear regression.
+
+```{r}
+
+```
+
+
+
+Fit a spline.
+
+```{r}
+?smooth.spline
+```
+
+
+There's a lot of ways R let's you control how this procedure works; to be honest I'm not clear on how all these operate. The original notions of splines worked on "knots", though.
+
+```{r}
+spline_5ks_0spar <- smooth.spline(x_temp[1:10],y_growth_rate[1:10],all.knots = seq(0,1,by=.25),spar=0.0)
+spline_5ks_1spar <- smooth.spline(x_temp[1:10],y_growth_rate[1:10],all.knots = seq(0,1,by=.25),spar=1.0)
+
+plot(predict(spline_5ks_0spar,seq(10,20,by=0.1)),type="l",col="blue",,ylim=c(0.2,.7)) +
+  lines(predict(spline_5ks_1spar,seq(10,20,by=0.1)),col="lightgreen") +
+  points(x_temp[1:10],y_growth_rate[1:10])
+```
+
+```{r}
+spline_10ks_0spar <- smooth.spline(x_temp[1:10],y_growth_rate[1:10],all.knots = seq(0,1,by=.1),spar=0)
+spline_10ks_1spar <- smooth.spline(x_temp[1:10],y_growth_rate[1:10],all.knots = seq(0,1,by=.1),spar=1)
+
+plot(predict(spline_10ks_0spar,seq(10,20,by=0.1)),type="l",col="blue",ylim=c(0.2,.7)) +
+  lines(predict(spline_10ks_1spar,seq(10,20,by=0.1)),col="lightgreen") +
+  points(x_temp[1:10],y_growth_rate[1:10])
+```
+
+```{r}
+spline_auto <- smooth.spline(x_temp[1:10],y_growth_rate[1:10])
+
+print(spline_auto)
+```
+```{r}
+plot(predict(spline_auto,seq(10,20,by=0.1)),type="l",col="lightgreen")
+abline(a=0.25,b=0.014)
+```

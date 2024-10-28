@@ -1,0 +1,55 @@
+---
+title: "Lab 0 Template"
+author: "Your Name Here"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+# this is a good place to put a setwd() line pointing to your working directory
+# if you use packages like ggplot, you can load them here too
+```
+
+# First we model
+
+## Population 1: constant cross-section
+
+```{r}
+# code (copied from lab document) for cylindrical fish population 1
+```
+
+## Population 2: cross-section changes in proportion to length
+
+```{r}
+# code for cylindrical fish population 2
+```
+
+**QUESTION: Pay attention to the slopes of the models fitted with lm() -- i.e., the slope of the line in the log(length)-log(weight) plots. What do these slopes tell you about how length and weight are related?**
+
+**QUESTION: Based on this geometric example, make a prediction about what you'd expect to see (in the plots and/or coefficients) if we do this analysis on a population of real fish that grow in length faster than they grow in cross-section. What about a population that grows proportionally?**
+
+# Where do real fish fit in?
+
+```{r}
+# use read.table() to import the Utila data
+```
+
+```{r}
+# subset the data to look at one species
+# do the same length vs weight analysis as you did for the simulated cylinder data. You should show a plot (or two) and the model coefficients estimated with lm().
+```
+
+```{r}
+# a second species
+```
+
+```{r}
+# a third species
+```
+
+**QUESTION: How well do your estimates match? Ask around the class. Are the errors systematic? Are the "eating fish" getting chunkier?**
+
+**QUESTION: "All models are wrong, some models are useful." We used two different types of models today. 1) We used geometric models (cylinders) to approximate the body shape of fish. 2) We used a linear model (the lm() function in R) to describe the relationship between log(length) and log(weight). In what ways were each of these models wrong (i.e., what did they leave out)? Were they useful?**

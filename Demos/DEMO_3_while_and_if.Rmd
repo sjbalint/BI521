@@ -1,0 +1,279 @@
+---
+title: "DEMO - While and if"
+author: "ER Deyle"
+date: "Fall 2023; Marine Semester Block 3"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+We've been talking about derivatives, equilibria, and finding zeros, so the examples in this demo will use those.
+
+In other programming languages, *if* statements are sometimes called *if-then* statements, since the syntax explicitly includes "then". There's also the opportunity to include an alternative piece of code for the cases where the conditional statement is "FALSE". This would constistute and *if-else* statement.
+
+## Conditionals
+
+There are a lot of relational operators in R, including `>`, `<`, `==`, `!=`, `>=`, and `<=`. Try these out.
+
+`>`: "Is LHS greater than RHS?"
+
+```{r}
+1 > 2
+```
+
+`<`: "Is LHS greater than RHS?"
+
+```{r}
+1 < 2
+```
+
+`==`: "Is LHS equal to RHS?"
+
+```{r}
+1 == 2
+```
+
+`!=`: "Is LHS not equal to RHS?"
+
+```{r}
+1 != 2
+```
+
+`>=`: "Is LHS greater than or equal to RHS?"
+
+```{r}
+1 >= 2
+```
+
+`<=`: "Is LHS less than or equal to RHS?"
+
+```{r}
+1 <= 2
+```
+
+There are a lot of other functions in R that return a logical (i.e. a `TRUE` or `FALSE` value). Here are some useful ones to check a single variable, vector, or list: `is.empty()`, `is.null()`, `is.na()`, `is.finite()`. There are also a lot of useful set-operations for conditionals, like `%in%`.
+
+```{r}
+3 %in% 1:10
+```
+
+```{r}
+13 %in% 1:10
+```
+
+```{r}
+"d" %in% list("a","b","c","d","e")
+```
+
+## `If`
+
+The `If` construction in R bears some structural similarity to `for` loops. The general syntax is:
+
+```{r,eval=FALSE}
+if(CONDITION){
+  CODE
+}
+```
+
+The enclosed "CODE" will only evaluate if `CONDITION` is `TRUE`. So, if we simply put the value `TRUE` in the arguement of `if()`, the code will evaluate:
+
+```{r}
+if(TRUE){
+  print("Yes!")
+}
+```
+
+The code will also evaluate if we put an expression in that evaluates to `TRUE`.
+
+```{r}
+if(1 < 2){
+  print("Yes!")
+}
+```
+
+This statement can include variables, but of course they need to have defined values already.
+
+```{r}
+a <- 1
+b <- 2
+
+if(a < b){
+  print("Yes!")
+}
+```
+
+When the `CONDITION` is `FALSE`, then R will not evalute the code. For example, if we simply put the value `FALSE` in the arguement of `if()`:
+
+```{r}
+if(FALSE){
+  print("Yes!")
+}
+```
+
+Nothing happened. And as before, the code will also be skipped if we put in an expression that evaluates to `FALSE`.
+
+```{r}
+if(1 > 2){
+  print("Yes!")
+}
+```
+
+
+## `Else`
+
+As I mentioned above, it's possible to present an alternative to the code enclosed in the `{}` using `else`. The general syntax is as follows:
+
+```{r,eval=FALSE}
+if(CONDITION){
+  CODE_1
+}else{
+  CODE_2
+}
+
+```
+
+When the `CONDITION` is `TRUE`, the code in the first set of braces (`CODE_1`) is evaluated. Alternatively, when the `CONDITION` is `FALSE`, the code in the second set of braces (`CODE_2`) is evaluated.
+
+```{r}
+a <- 1
+b <- 2
+
+if(a < b){
+  print("Yes!")
+}else{
+  print("No!")
+}
+```
+
+```{r}
+a <- 3
+b <- 2
+
+if(a < b){
+  print("Yes!")
+}else{
+  print("No!")
+}
+```
+
+**EXERCISE** Write an `if` statement to check if a variable is an integer. Use the function `round()` (type `?round`).
+
+```{r}
+# YOUR CODE HERE
+```
+
+## `while`.
+
+In some sense, `while` loops are a blend of `for` and `if`. The basic construction is as follows:
+
+```{r,eval=FALSE}
+while(CONDITION){
+  CODE
+}
+```
+
+R will loop through the `CODE` enclosed in by the `{}` so long as `CONDITION` is `TRUE`. This immediately brings up an important point: if nothing ever changes the `CONDITION`, then it's possible a `while` loop will never finish on its own. When we started with `if` above, we first just set the `CONDITION` to be `TRUE`. Now when we do that, we will have to force R to suspend calculation or it will just keep looping.
+
+```{r,eval=FALSE}
+while(TRUE){
+  print("1 second has passed")
+  Sys.sleep(1)
+}
+```
+
+Let's do something constrained instead, like counting. We will start at 1, print the value, then add 1, and tell R to stop at 10.
+
+```{r}
+counter <- 1
+
+while(counter < 10){
+  print(counter)
+  counter = counter + 1
+}
+```
+
+Notice that as soon as counter got to 10, R stopped executing the code. If we wanted R to do the 10th iteration, we could do a few things like changing the conditional slightly:
+
+```{r}
+counter <-  1
+
+while(counter <= 10){
+  print(counter)
+  counter = counter + 1
+}
+```
+We could also be clever about when we check the value of `counter` versus when we print the value of `counter`. If we want to print the value first,
+
+```{r}
+counter <- 0
+
+while(counter < 10){
+  counter = counter + 1
+  print(counter)
+}
+```
+
+We can go back to one of our population models for a fish population and use a `while` loop instead!
+
+```{r}
+N_fish_t <- .5
+dt <- 0.05
+
+counter <- 0
+while(counter < 40){
+  counter <- counter + 1
+  N_fish_t <- N_fish_t + (N_fish_t * (1 - N_fish_t))*dt
+  print(N_fish_t)
+}
+```
+
+
+Why would we want to? Well there's at least one convenient thing here- we can keep track of the actual time value in the model instead of just the number of steps, so our `while` condition will become
+
+```{r}
+N_fish_t <- .5
+dt <- 0.05
+
+t_model <- 0
+while(t_model < 2){
+  t_model <- t_model + dt
+  N_fish_t <- N_fish_t + (N_fish_t * (1 - N_fish_t))*dt
+  print(c(t_model,N_fish_t))
+}
+```
+
+## Using `while`.
+
+
+The real value of a `while` loop, however, is if you want to repeat a calculation a lot of times but you aren't sure exactly *how many times*. Recall before we discussed approximating the derivative using it's original definition:
+
+$$ \frac{df}{dx} = lim_{\Delta x \rightarrow 0} \frac{f(x+\Delta x) - f(x)}{\Delta x} $$
+
+How small do we need make the step size to get our numerical estimate of the derivative within a certain tolerance? There's no generic answer, but we can simulate it! Each step of the way, we reduce the step size by 50%.
+
+```{r}
+delta_x <- 1
+tolerated_error <- 10^-5
+
+f_cubic <- function(x) x^3 - 2*x + 1
+dfdx_cubic <- function(x) 3*x^2 - 2
+
+x_star <- 2
+
+current_error <- ( f_cubic(x_star + delta_x) - f_cubic(x_star) )/delta_x - dfdx_cubic(x_star)
+
+while(current_error > tolerated_error){
+  
+  # cut the step size by 2 before starting over
+  delta_x <- delta_x/2
+  current_error <- ( f_cubic(x_star + delta_x) - f_cubic(x_star) )/delta_x - dfdx_cubic(x_star)
+  print(c(delta_x,current_error))
+
+}
+```
