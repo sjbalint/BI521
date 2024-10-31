@@ -2,19 +2,17 @@
 title: "Lab 1"
 author: "Sawyer Balint"
 output:
-  html_document:
-    df_print: paged
   pdf_document: default
 ---
 
-```{r, echo=FALSE, message=FALSE}
+This document is available at https://github.com/sjbalint/BI521/tree/main/scripts/labs
+
+```{r, message=FALSE}
 #import packages
 library(tidyverse) #for data wrangling
 library(here) #for filepath management
 library(ggsci) #for colors
-```
 
-```{r}
 #custon graphing theme
 theme <- list(
   theme_classic(),
@@ -23,8 +21,6 @@ theme <- list(
 )
 
 ```
-      
-
 
 ### 1. "TASK: Estimate the size of your *in plastico* fish population."
 
@@ -136,13 +132,13 @@ ggplot(silico.df, aes(N)) +
 
 ```
 
-If no marked fish are recaptured (r = 0), then the estimated population size will be infinity. Thus, we need to exclude estimates for which there are no recaptures. If we then calculate the median of the distribution, we end up with an estimate of `r new_silico_estimate` which is pretty accurate!
+If no marked fish are recaptured (r = 0), then the estimated population size will be infinity. Thus, we need to exclude estimates for which there are no recaptures. There is still a positive bias in the mean, but if we then calculate the median of the distribution we end up with an estimate of `r new_silico_estimate` which is pretty accurate!
 
 
 ### 3. CHALLENGE
 
 ```{r}
-
+#pick a very large N to see if the bias goes away
 N <- 100000
 
 #empty list to store results
@@ -174,6 +170,7 @@ silico.df <- bind_rows(result.list)
 max(silico.df$N)
 
 #make a graph
+#this graph looks better
 ggplot(silico.df, aes(N)) +
   theme+
   geom_histogram(fill="grey", color="black")+
@@ -181,8 +178,8 @@ ggplot(silico.df, aes(N)) +
   scale_y_continuous(expand=expansion(mult=c(0,0.05)))+
   labs(x="Estimated N")
 
-#try again with a low N, but bayesian derivation
-N <- 50
+#try again with N=5000, but bayesian derivation
+N <- 5000
 
 #empty list to store results
 result.list <- list()
@@ -223,12 +220,12 @@ ggplot(silico.df, aes(N)) +
 
 ```
 
-With a very large population size, it becomes nearly impossible for r to approximate zero, and thus the distribution of data is no longer skewed towards high values (divide by very low r). As the fraction of the population (re)captured decreases, this biases becomes more severe. The bayesian derivation aids with this problem.
+With a very large population size, it becomes nearly impossible for *r* to approximate zero, and thus the distribution of data is no longer skewed towards high values (divide by very low *r*). As the fraction of the population (re)captured decreases, this biases becomes more severe. The bayesian derivation aids with this problem.
 
 ### 4. "TASK: Compute estimates of the 0.025 and 0.975 quantiles for an *in silico* mark-recapture experiment"
 
 ```{r}
-#calculate CI from most recent mark-recapture (N=50, bayesian derivation)
+#calculate CI from most recent mark-recapture (N=5000, bayesian derivation)
 
 #empty list to store results
 result.list <- list()
@@ -266,21 +263,89 @@ ggplot(plot.df, aes(x=name, y=value, fill=name)) +
 
 ```
 
-The 0.025 quantile is `r lower_CI`, and the 0.975 quantile is `r upper_CI`. The true population size of `r N` fits comfortably within the confidence intervals. To further visualize the data, I compared the observed and bootstrapped data using violin plots with integrated boxplots. The population size (`r N`) is indicated by the dashed red line.
+The 0.025 quantile is `r lower_CI`, and the 0.975 quantile is `r upper_CI`. The true population size of `r N` fits comfortably within the confidence intervals, in part because I was using the more accurate bayesian derivation. To further visualize the data, I compared the observed and bootstrapped data using violin plots with integrated boxplots. The population size (`r N`) is indicated by the dashed red line.
 
 
 ### Extension
 
 ```{r}
+#i'm going to randomly assign fish size, and then bias catchability towards larger individuals
+#somewhat larger N
+N <- 5000
 
+#empty list to store results
+result.list <- list()
 
+#iterate 500 times
+#this takes a while to run with large N
+for (i in 1:500){
+  
+  #for each iteration...
+  silico.df <- data.frame( #new dataframe
+    size1 = runif(N, min=0.4), #size ranging from 0-1
+    m = round(runif(N)), #random m
+    K = round(runif(N)) #random K
+    ) %>%
+    mutate(size2 = mean(size1), #all fish the same size
+           m1 = round(m*size1), #scale with size
+           K1 = round(K*size1), #scale with size
+           m2 = round(m*size2), #size has no effect because it is greater than 0.5
+           K2 = round(K*size2), #size has no effect because it is greater than 0.5
+           r1 = ifelse(m1 == 1 & K1 == 1, 1, 0),
+           r2 = ifelse(m2 == 1 & K2 == 1, 1, 0)) %>% 
+    summarize(across(c("m","m1","m2","K","K1","K2","r1","r2"), sum),
+              across(c("size1","size2"), mean)) %>% #sum
+    mutate(N1=(m1+1)*(K1+1)/(r1+1)-1, #bayesian derivation
+           N2=(m2+1)*(K2+1)/(r2+1)-1, #bayesian derivation
+           iteration=i) #record iteration
+  
+  #append result
+  result.list <- append(result.list, list(silico.df))
+  
+}
+
+#compiled dataframe
+silico.df <- bind_rows(result.list)
+
+#manually pivot longer because I'm lazy
+#scenario with size varying across individuals
+size1.df <- silico.df %>%
+  select(size1,m1,K1,r1,N1) %>%
+  mutate(scenario="Variable size")
+
+colnames(size1.df) <- c("size","m","K","r","N","scenario")
+
+#scenario with size constant throughout population
+size2.df <- silico.df %>%
+  select(size2,m2,K2,r2,N2)%>%
+  mutate(scenario="Constant size")
+
+colnames(size2.df) <- c("size","m","K","r","N","scenario")
+
+#combine together in a loger format
+size.df <- bind_rows(size1.df, size2.df) %>%
+  mutate(scenario=factor(scenario, levels=c("Variable size","Constant size")))
+
+#plot histogram of results
+ggplot(size.df, aes(N, fill=scenario))+
+  theme+
+  geom_histogram(color="black", alpha=0.7)+
+  theme(legend.position="top")+
+  geom_vline(xintercept=N, color="darkred",linetype="dashed")+
+  scale_y_continuous(expand=expansion(mult=c(0,0.05)))+
+  labs(fill="Scenario",
+       x="Estimated N")
+  
 ```
 
+In the model above, I tested two scenarios: one where the size of individuals in the population was a constant 0.7, and one where the size of individuals was uniformly distributed between 0.4 and 1.0. In both cases, only fish exceeding a size of 0.5 are able to be caught in the net. Thus, in scenario 1 all of the fish are able to be caught, while in the second scenario only a subset of the population can be caught.
+
+In the figure above, we find that this bias in catchability decreases the estimated N from mark and recapture, because it is only modelling the population of *catchable* fish, rather than all fish. Clearly, a more sophisticated model is required to account for this bias.
 
 ### REFLECTION QUESTIONS
 1. Both *in plastico* and *in silico* models of mark and recapture are highly simplified. What is sorely missing? What is missing but won't necessarily matter?
 
-Both models do not account for variations in catchability due to fish size, age, or location. Additionally, the models to not include the natural mortality rate of the fish - it assumes that all of the marked fish are present when the recapture occurs. In reality, some of the population probably dies/migrates out of the habitat/is caught between the two sampling events, and this is not being captured by the models.
+Both models do not account for variations in catchability due to fish size, age, or location. As shown in my extension model above, catchability can have a large effect on estimated population size. Additionally, the models to not include the natural mortality rate of the fish - it assumes that all of the marked fish are present when the recapture occurs. In reality, some of the population probably dies/migrates out of the habitat/is caught between the two sampling events, and this is not being captured by the models.
 
 
 
