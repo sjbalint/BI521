@@ -32,11 +32,6 @@ theme <- list(
   labs(x="Year",y="Population")
 )
 
-logtheme <- list(
-    scale_y_log10(labels = trans_format(log10, math_format(10^.x))),
-    annotation_logticks(sides="l")
-)
-
 ```
 
 # Part I
@@ -47,12 +42,10 @@ logtheme <- list(
 
 ```{r}
 #function with some default parameters
-BM_1 <- function(N=0.25, r=2.5, K=1, E=0.5){
+dNdt_BM_logistic_CE <- function(N=0.25, r=2.5, K=1, E=0.5){
   
   #calculate dN_dt
-  dN_dt <- r * N * (1-(N/K))-(E*N)
-  
-  return(dN_dt)
+  r * N * (1-(N/K))-(E*N)
   
 }
 
@@ -76,7 +69,7 @@ for (r in c(1,2,3)){
       
       
       #calculate dN/dt
-      dN_dt <- BM_1(N=N, r=r, K=K, E=0)
+      dN_dt <- dNdt_BM_logistic_CE(N=N, r=r, K=K, E=0)
       
       #dataframe to store results
       df <- data.frame(dN_dt=dN_dt, N=N, r=as.character(r), K=as.character(K))
@@ -127,7 +120,7 @@ for (r in c(1,2,3)){
     for (t in c(1:(10/dt))){
       
       #calculate N
-      N <- N + dt*BM_1(N=N, r=r, K=K, E=0)
+      N <- N + dt*dNdt_BM_logistic_CE(N=N, r=r, K=K, E=0)
       
       #dataframe to store results
       df <- data.frame(t=t*dt, N=N, r=as.character(r), K=as.character(K))
@@ -149,16 +142,16 @@ ggplot(result.df, aes(t, N, color=r, linetype=K))+
 
 ```
 
-> **Fig. 2:** Population asymptotically approaches *K*, and a larger *K* results in a larger population at equilibrum. *r* influences the "steepness" of the population curve: at higher replacement, the return from the purtubation is faster.
+> **Fig. 2:** Population asymptotically approaches *K*, and a larger *K* results in a larger population at equilibrium *r* influences the "steepness" of the population curve: at higher replacement, the return from the purtubation is faster.
 
 ## Task 3
 
 ```{r}
 #make a function with some default parameters
-BM_2 <- function(N0=0.25, r=2.5, K=1, E=0.5, dt=0.01, duration=10){
+f_sim_BM_logistic_CE <- function(N0=0.25, r=2.5, K=1, E=0.5, dt=0.01, duration=10){
   
   #empty list to store results
-  result.list <- list()
+  result.v <- vector()
   
   #set initial population
   N <- N0
@@ -167,29 +160,30 @@ BM_2 <- function(N0=0.25, r=2.5, K=1, E=0.5, dt=0.01, duration=10){
   for (t in c(1:(duration/dt))){
       
       #calculate N
-      N <- N + dt*BM_1(N=N, r=r, K=K, E=E)
+      N <- N + dt*dNdt_BM_logistic_CE(N=N, r=r, K=K, E=E)
+      
+      #can't have a negative population!
+      if (N<0){
+        N <- 0
+        }
       
       #dataframe to store results
-      df <- data.frame(t=t*dt, N=N)
-      
-      #store results 
-      result.list <- append(result.list, list(df)) 
+      result.v <- c(result.v, N)
        
   }
   
-  #compile
-  result.df <- bind_rows(result.list)
-  
-  return(result.df)
+  return(result.v)
 }
-
 
 result.list <- list()
 
 for (E in c(0.2, 0.5, 0.7)){
   
-  df <- BM_2(E=E) %>%
-    mutate(E=as.character(E))
+  N.v <- f_sim_BM_logistic_CE(E=E)
+  
+  df <- data.frame(N = N.v,
+                   E=as.character(E)) %>%
+    mutate(t=row_number()*dt)
   
   result.list <- append(result.list, list(df)) 
   
@@ -202,6 +196,8 @@ ggplot(result.df, aes(t, N, color=E))+
   theme+
   geom_line()
 
+
+
 ```
 
 > **Fig. 3:** *E* impacts the equilibrium population size, with larger *E* corresponding to a lower population size and slower recovery.
@@ -209,42 +205,49 @@ ggplot(result.df, aes(t, N, color=E))+
 ## Task 4
 
 ```{r}
-#function to fine equilibrium population level
-equil <- function(K=1,E=0.5,r=2.5){
-  K * (1 - (E/r))
+#function to fine equilibroum population level
+f_N_equil_E <- function(K=1,E=0.5,r=2.5){
+  f_N_equil_E <- K * (1 - (E/r))
+  
+  #can't have a negative population!
+  if (f_N_equil_E<0){
+    f_N_equil_E <- 0
+  }
+  
+  return(f_N_equil_E)
 }
 
 #function for single perturbation
-crt <- function(dN=0.2, r=2.5, K=1, E=0.2, index=FALSE){
+return_time_CE <- function(dN=0.2, r=2.5, K=1, E=0.2){
   
-  N_equil <- equil(K,E,r)
-  N0 <- N_equil - dN
-  v_N <- BM_2(N0=N0, r=r, K=K, E=E)
-  return_index <- min(which(abs(v_N - N_equil) < dN / exp(1)))
-  return_time <- v_N[return_index,"t"]
+  N_f_N_equil_E <- f_N_equil_E(K,E,r)
+  N0 <- N_f_N_equil_E - dN
+  v_N <- f_sim_BM_logistic_CE(N0=N0, r=r, K=K, E=E)
   
-  #I want to be able to decide whether I get the index or time step
-  #if dt = 0.01, then time step = 1000 * index
-  if (index){
-     return(return_index) 
+  #deal with the infinity issue
+  #if the population has crashed, there is no return time
+  if (v_N[1]>v_N[length(v_N)] | v_N[length(v_N)]==0){
+    return_index <- NA
   } else {
-    return(return_time) 
+    return_index <- min(which(abs(v_N - N_f_N_equil_E) < dN / exp(1)))
   }
+  
+  return(return_index) 
 }
 
 #plot of population over time
-plot.df <- BM_2(E=0.2)
+plot.df <- data.frame(N=f_sim_BM_logistic_CE(E=0.2)) %>%
+  mutate(t=row_number()*dt)
 
 #find return time
-#this is why we need index... because time step is decimal
-point <- c(crt(E=0.2),plot.df[crt(E=0.2, index=TRUE),"N"])
+point <- c(return_time_CE(E=0.2)*dt,plot.df[return_time_CE(E=0.2),"N"])
 
 #make the plot
 ggplot(plot.df, aes(t, N))+
   theme+
   geom_line()+
   geom_point(x=point[1], y=point[2], shape=23, size=4, fill="darkred")+
-  geom_hline(yintercept=equil(1,0.2,2.5), linetype="dashed")
+  geom_hline(yintercept=f_N_equil_E(1,0.2,2.5), linetype="dashed")
 
 ```
 
@@ -254,21 +257,290 @@ ggplot(plot.df, aes(t, N))+
 
 ```{r}
 
+#empty vectors to store results
 rt.v <- vector()
-E.v <- vector()
+yield.v <- vector()
 
-for (E in seq(0,1.5,0.01)){
+#for loop
+for (E in seq(0,2,0.1)){
   
-  rt <- crt(dN=0.1, E=E)
+  N_f_N_equil_E <- f_N_equil_E(E=E)
+  rt <- return_time_CE(dN=0.1, E=E)*dt
   
+  yield.v <- c(yield.v,N_f_N_equil_E*E)
   rt.v <- c(rt.v,rt)
-  E.v <- c(E.v, E)
 }
 
-result.df <- data.frame(rt=rt.v, E=E.v)
+result.df <- data.frame(rt=rt.v/rt.v[1], yield=yield.v)
 
-ggplot(result.df, aes(E,rt))+
+ggplot(result.df, aes(yield,rt))+
+  theme+
+  geom_line(orientation = "y")+
+  labs(x="Yield", y="Return Time")
+  
+
+```
+
+> **Fig. 5:** Change in return time with yield.
+
+## Task 6
+
+- `dNdt_BM_logistic_CE()`: This function, which calculates *dN/dt*, needs to be modified
+- For loops in tasks 1 and 2 need to be modified to use a different function from `dNdt_BM_logistic_CE()`
+- `f_sim_BM_logistic_CE()`: This function, which returns a vector of N over time, needs to be modified to not use `dNdt_BM_logistic_CE()`
+- `f_N_equil_E()`: This function, which calculates the equilibrium population level, needs to be modified
+- `return_time_CE()`: this function, which calculates the return time of the population from a perturbation, needs to be modified to not use `f_N_equil_E()` and `f_sim_BM_logistic_CE()`
+
+# Part II
+
+## Task 7
+
+```{r}
+#repeat everything for constant yield
+
+#function for dN/dt
+dNdt_BM_logistic_CY <- function(N=0.25, r=2.5, K=1, Y=0.1){
+  
+  #calculate dN_dt
+  r * N * (1-(N/K))-Y
+  
+}
+
+#logistic growth model
+f_sim_BM_logistic_CY <- function(N0=0.25, r=2.5, K=1, Y=0.1, dt=0.01, duration=10){
+  
+  #empty list to store results
+  result.v <- vector()
+  
+  #set initial population
+  N <- N0
+  
+  #iterate
+  for (t in c(1:(duration/dt))){
+      
+      #calculate N
+      N <- N + dt*dNdt_BM_logistic_CY(N=N, r=r, K=K, Y=Y)
+      
+      #can't have a negative population!
+      if (N<0){N <- 0}
+      
+      #dataframe to store results
+      result.v <- c(result.v, N)
+       
+  }
+  
+  return(result.v)
+}
+
+#function to find equilibrium population level
+f_N_equil_Y <- function(K=1,Y=0.1,r=2.5){
+  
+  #do this part separately to identify population crash
+  intermediate <- 1-(4*Y)/(r*K)
+  
+  #fix the infinity issue
+  if (intermediate<0){
+    intermediate <- 0
+  }
+  
+  N_equil <- K/2 * (1 + sqrt(intermediate))
+  
+  return(N_equil)
+}
+
+#function for single perturbation
+return_time_CY <- function(dN=0.2, r=2.5, K=1, Y=1){
+  
+  N_f_N_equil_Y <- f_N_equil_Y(K=K,Y=Y,r=r)
+  N0 <- N_f_N_equil_Y - dN
+  v_N <- f_sim_BM_logistic_CY(N0=N0, r=r, K=K, Y=Y)
+  
+  #deal with the infinity issue
+  #if the population does not approach equilibrium by the end of the simulation, return NA
+  if (v_N[1]>v_N[length(v_N)] | v_N[length(v_N)]==0){
+    return_index <- NA
+  } else {
+    return_index <- min(which(abs(v_N - N_f_N_equil_Y) < dN / exp(1)))
+  }
+  
+  return(return_index)
+}
+
+#make a quick plot to see how population dynamics change with yield
+result.list <- list()
+
+#iterate over three values of y
+for (Y in c(0.3, 0.4, 0.5)){
+  
+  N.v <- f_sim_BM_logistic_CY(N0=0.3, Y=Y)
+  
+  df <- data.frame(N = N.v,
+                   Y=as.character(Y)) %>%
+    mutate(t=row_number()*dt)
+  
+  result.list <- append(result.list, list(df)) 
+  
+}
+
+result.df <- bind_rows(result.list)
+
+#plot
+ggplot(result.df, aes(t, N, color=Y))+
   theme+
   geom_line()
 
 ```
+
+> **Fig. 6:** Population dynamics under different yields. The population equilibrium decreases with increasing yield.
+
+## Task 8
+
+```{R}
+
+#empty vectors to store results
+rt.v <- vector()
+yield.v <- vector()
+
+#for loop
+for (Y in seq(0,1,0.01)){
+  
+  N_f_N_equil_Y <- f_N_equil_Y(Y=Y)
+  rt <- return_time_CY(dN=0.1, Y=Y)
+  
+  yield.v <- c(yield.v,Y)
+  rt.v <- c(rt.v,rt)
+}
+
+result.df <- data.frame(rt=rt.v/rt.v[1], yield=yield.v) %>%
+  drop_na()
+
+ggplot(result.df, aes(yield,rt))+
+  theme+
+  geom_line(orientation = "y")+
+  labs(x="Yield", y="Return Time")
+
+```
+
+> **Fig. 7:** Variations in return time with yield. Increasing yield results in an increasing return time.
+
+## Task 9
+
+```{r}
+
+#wrap this in a function because we're going to do it again in task 10
+model_return_time <- function(K=1,r=2.5){
+  
+  #empty list
+  result.list <- list()
+  
+  for (type in c("Effort","Yield")){
+    
+    if (type == "Effort"){
+      
+        for (E in seq(0,2,0.01)){
+    
+        N_f_N_equil_E <- f_N_equil_E(K=K, r=r, E=E)
+        rt <- return_time_CE(dN=0.1, K=K, r=r, E=E)*dt
+        
+        df <- data.frame(yield = N_f_N_equil_E*E,
+                         return_time = rt,
+                         type = type)
+        
+        result.list <- append(result.list, list(df))
+            
+      } #for Y
+    } #if effort
+    
+    if (type == "Yield"){
+      
+      for (Y in seq(0,1,0.01)){
+    
+        N_f_N_equil_Y <- f_N_equil_Y(K=K, r=r, Y=Y)
+        rt <- return_time_CY(dN=0.1, K=K, r=r, Y=Y)
+        
+        df <- data.frame(yield = Y,
+                         return_time = rt,
+                         type = type)
+        
+        result.list <- append(result.list, list(df))
+        
+      } #for Y
+    } #if yield
+  } #for type
+  
+  #compile dataframe
+  result.df <- bind_rows(result.list)
+  
+  #normalize effort and yield return times
+  effort.v <- result.df %>%
+    filter(type=="Effort") %>%
+    pull(return_time)
+  
+  effort.v <- effort.v/effort.v[1]
+  
+  yield.v <- result.df %>%
+    filter(type=="Yield") %>%
+    pull(return_time)
+  
+  yield.v <- yield.v/yield.v[1]
+  
+  #add normalized return times
+  plot.df <- result.df %>%
+    mutate(norm_rt = c(effort.v,yield.v))
+  
+  return(plot.df)
+
+}
+
+plot.df <- model_return_time()
+
+#plot return time
+ggplot(plot.df, aes(yield, norm_rt, color=type))+
+  theme+
+  geom_line(orientation = "y")+
+  labs(x="Yield", y="Return Time", color="Model Type")
+
+```
+
+> **Fig. 8:** Replication of Fig. 2.
+
+## Task 10
+
+```{r}
+
+result.list <- list()
+
+for (r in c(0.5,1,1.5)){
+  
+  #I can't stand this infinity error anymore. My code works.
+  suppressWarnings(
+     df <- model_return_time(K=K,r=r) %>%
+       mutate(K=as.character(K),
+              r=as.character(r)) 
+  )
+  
+  result.list <- append(result.list, list(df))
+  
+} #for r
+
+result.df <- bind_rows(result.list) %>%
+  filter(is.finite(norm_rt),
+         yield>0)
+
+#plot return time
+ggplot(result.df, aes(yield, norm_rt, linetype=type, color=r))+
+  theme+
+  geom_line(orientation = "y")+
+  labs(x="Yield", y="Return Time", linetype="Model Type")
+
+```
+
+# Extension
+
+```{r}
+
+
+```
+
+# Reflection Questions
+
