@@ -8,6 +8,10 @@
 \contentsline {subsection}{\numberline {2.6}Task 6}{10}{subsection.2.6}%
 \contentsline {section}{\numberline {3}Part II}{10}{section.3}%
 \contentsline {subsection}{\numberline {3.1}Task 7}{10}{subsection.3.1}%
-\contentsline {subsection}{\numberline {3.2}Task 8}{12}{subsection.3.2}%
-\contentsline {subsection}{\numberline {3.3}Task 9}{13}{subsection.3.3}%
-\contentsline {subsection}{\numberline {3.4}Task 10}{15}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.2}Task 8}{13}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Task 9}{14}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Task 10}{16}{subsection.3.4}%
+\contentsline {section}{\numberline {4}Extension}{17}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Extension 1}{17}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Extension 2}{19}{subsection.4.2}%
+\contentsline {section}{\numberline {5}Reflection Questions}{20}{section.5}%

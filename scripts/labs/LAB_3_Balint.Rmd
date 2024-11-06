@@ -28,8 +28,7 @@ theme <- list(
   theme_classic(),
   scale_color_jama(),
   scale_fill_jama(),
-  theme(legend.position="right"),
-  labs(x="Year",y="Population")
+  theme(legend.position="right")
 )
 
 ```
@@ -37,8 +36,6 @@ theme <- list(
 # Part I
 
 ## Task 1
-
-**Write a custom function to calculate the value of $\frac{dN}{dt} = rN(t)(1-N(t)/k) - EN(t)$. The function should take as arguments the current stock-size $N$, level of fishing effort $E$ and model parameters $r$, $k$.**
 
 ```{r}
 #function with some default parameters
@@ -49,12 +46,7 @@ dNdt_BM_logistic_CE <- function(N=0.25, r=2.5, K=1, E=0.5){
   
 }
 
-```
-
-**Use the custom R function to plot the growth rate $dN/dt$ for a few different sets of values for parameters $r$ and $K$. How do the parameters affect the shape?**
-
-
-```{r}
+#plot changes dN/dT
 #empty list to store results
 result.list <- list()
 
@@ -94,11 +86,9 @@ ggplot(result.df, aes(N, dN_dt, color=r, linetype=K))+
 
 ```
 
-> **Fig. 1:** *dN/dt* increases with both *r* and *K*, and the maximum *dN/dt* occurs when *N* = 1/2*K* 
+> **Fig. 1:** *dN/dt* increases with both *r* and *K*, and the maximum *dN/dt* occurs when *N* = 1/2*K*.  
 
 ## Task 2
-
-**Rewrite the `for` loop above to simulate the population dynamics but use the custom function to get the rate of change of the population.**
 
 ```{r}
 #empty list to store results
@@ -142,7 +132,7 @@ ggplot(result.df, aes(t, N, color=r, linetype=K))+
 
 ```
 
-> **Fig. 2:** Population asymptotically approaches *K*, and a larger *K* results in a larger population at equilibrium *r* influences the "steepness" of the population curve: at higher replacement, the return from the purtubation is faster.
+> **Fig. 2:** Population asymptotically approaches *K*, and a larger *K* results in a larger population at equilibrium. *r* influences the "steepness" of the population curve: at higher replacement, the return from the purtubation is faster.
 
 ## Task 3
 
@@ -226,7 +216,8 @@ return_time_CE <- function(dN=0.2, r=2.5, K=1, E=0.2){
   
   #deal with the infinity issue
   #if the population has crashed, there is no return time
-  if (v_N[1]>v_N[length(v_N)] | v_N[length(v_N)]==0){
+  #i define population crash as when the population does not reach equilibrium
+  if (is.na(N_f_N_equil_E) | v_N[length(v_N)] < N_f_N_equil_E*0.95){
     return_index <- NA
   } else {
     return_index <- min(which(abs(v_N - N_f_N_equil_E) < dN / exp(1)))
@@ -251,7 +242,7 @@ ggplot(plot.df, aes(t, N))+
 
 ```
 
-> **Fig. 4:** Plot of return time with *E* = 0.2. 
+> **Fig. 4:** Plot of return time with *E* = 0.2. The horizontal dashed line indicates the equilibrium population level.
 
 ## Task 5
 
@@ -281,15 +272,17 @@ ggplot(result.df, aes(yield,rt))+
 
 ```
 
-> **Fig. 5:** Change in return time with yield.
+> **Fig. 5:** Change in return time with yield. As fishing effort increases, yield increases to a relative maxima and then begins to decrease. 
+
+> R begins complaining about missing arguments because, at certain model configurations, the return time exceeds the length of the simulation. I have tried to fix this within `return_time_CE()` by only calculating return time in cases where the population successfully reaches equilibrium.
 
 ## Task 6
 
 - `dNdt_BM_logistic_CE()`: This function, which calculates *dN/dt*, needs to be modified
 - For loops in tasks 1 and 2 need to be modified to use a different function from `dNdt_BM_logistic_CE()`
-- `f_sim_BM_logistic_CE()`: This function, which returns a vector of N over time, needs to be modified to not use `dNdt_BM_logistic_CE()`
+- `f_sim_BM_logistic_CE()`: This function, which returns a vector of N over time, needs to be modified using new versions of `dNdt_BM_logistic_CE()`
 - `f_N_equil_E()`: This function, which calculates the equilibrium population level, needs to be modified
-- `return_time_CE()`: this function, which calculates the return time of the population from a perturbation, needs to be modified to not use `f_N_equil_E()` and `f_sim_BM_logistic_CE()`
+- `return_time_CE()`: this function, which calculates the return time of the population from a perturbation, needs to be modified to using new versions of  `f_N_equil_E()` and `f_sim_BM_logistic_CE()`
 
 # Part II
 
@@ -335,12 +328,12 @@ f_sim_BM_logistic_CY <- function(N0=0.25, r=2.5, K=1, Y=0.1, dt=0.01, duration=1
 #function to find equilibrium population level
 f_N_equil_Y <- function(K=1,Y=0.1,r=2.5){
   
-  #do this part separately to identify population crash
+  #we can't have a negative square root, so use this to filter out cases where Y is too large
   intermediate <- 1-(4*Y)/(r*K)
   
-  #fix the infinity issue
+  #remove negatives
   if (intermediate<0){
-    intermediate <- 0
+    intermediate <- 0 #this will return an N_equil of zero, which is more accurate than infinity
   }
   
   N_equil <- K/2 * (1 + sqrt(intermediate))
@@ -357,7 +350,7 @@ return_time_CY <- function(dN=0.2, r=2.5, K=1, Y=1){
   
   #deal with the infinity issue
   #if the population does not approach equilibrium by the end of the simulation, return NA
-  if (v_N[1]>v_N[length(v_N)] | v_N[length(v_N)]==0){
+  if (is.na(N_f_N_equil_Y) | v_N[length(v_N)] < N_f_N_equil_Y*0.95){
     return_index <- NA
   } else {
     return_index <- min(which(abs(v_N - N_f_N_equil_Y) < dN / exp(1)))
@@ -391,7 +384,7 @@ ggplot(result.df, aes(t, N, color=Y))+
 
 ```
 
-> **Fig. 6:** Population dynamics under different yields. The population equilibrium decreases with increasing yield.
+> **Fig. 6:** Population dynamics under different yields. As yield increases, the equilibrium population decreaes and the speed at which the population reaches equilibrium decreases.
 
 ## Task 8
 
@@ -421,7 +414,7 @@ ggplot(result.df, aes(yield,rt))+
 
 ```
 
-> **Fig. 7:** Variations in return time with yield. Increasing yield results in an increasing return time.
+> **Fig. 7:** Variations in return time with yield. Increasing yield results in an increasing return time, up to a maximum yield of about 0.61 (at these values of *r* and *K*).
 
 ## Task 9
 
@@ -502,7 +495,7 @@ ggplot(plot.df, aes(yield, norm_rt, color=type))+
 
 ```
 
-> **Fig. 8:** Replication of Fig. 2.
+> **Fig. 8:** Replication of B&M Fig. 2.
 
 ## Task 10
 
@@ -511,13 +504,10 @@ ggplot(plot.df, aes(yield, norm_rt, color=type))+
 result.list <- list()
 
 for (r in c(0.5,1,1.5)){
-  
-  #I can't stand this infinity error anymore. My code works.
-  suppressWarnings(
-     df <- model_return_time(K=K,r=r) %>%
-       mutate(K=as.character(K),
-              r=as.character(r)) 
-  )
+
+  df <- model_return_time(K=K,r=r) %>%
+     mutate(K=as.character(K),
+            r=as.character(r)) 
   
   result.list <- append(result.list, list(df))
   
@@ -535,12 +525,84 @@ ggplot(result.df, aes(yield, norm_rt, linetype=type, color=r))+
 
 ```
 
+> **Fig. 9:** B&M Fig. 2 under different *r* values. We find that the maximum yield, and maximum return time, increades with *r* but the overall shape remains the same for constant effort and constant yield.
+
 # Extension
 
+## Extension 1
+
 ```{r}
+#first, derive effort from yield at equilibrium population
+#empty vectors to store results
+effort.v <- vector()
+yield.v <- vector()
+
+#for loop
+for (Y in seq(0,0.6,0.01)){
+  
+  N_f_N_equil_Y <- f_N_equil_Y(Y=Y)
+  
+  yield.v <- c(yield.v,Y)
+  
+  #derive effort from yield
+  effort.v <- c(effort.v, Y/N_f_N_equil_Y)
+}
+
+result.df <- data.frame(yield=yield.v,
+                        effort=effort.v)
+
+ggplot(result.df, aes(yield, effort))+
+  theme+
+  geom_line()+
+  geom_abline(linetype="dashed")+
+  labs(x="Yield", y="Effort")
+
+```
+
+> **Fig. 10:** Effort derived from yield at equilibrium population. A 1:1 relationship is identified by the dashed line. We find that, as yield increases, exponentially more effort is required because the fish are harder to catch!
+
+## Extension 2
+
+```{r}
+#new dN/dt with noise
+#sigma2/r of 0.2 is from B&H 1977
+r = 2.5
+K = 1
+sigma2 <- 0.2 * r
+
+result.list <- list()
+
+for (E in seq(0,2.5,0.01)){
+  
+  Y_mean <- ((K*E)/r)*(r - E - sigma2/2)
+  CV = ((sigma2/2)/(r - E - (sigma2/2)))^2
+  
+  df <- data.frame(Y_mean = Y_mean,
+                   CV = CV,
+                   E = E/r)
+  
+  result.list <- append(result.list, list(df))
+  
+}
+
+result.df <- bind_rows(result.list) %>%
+  filter(Y_mean>=0) %>% #can't have negative population
+  mutate(CV=ifelse(CV>max(Y_mean)*1.1,NA,CV)) #constrain results for plotting purposes
+
+ggplot(result.df)+
+  theme+
+  geom_line(aes(E,Y_mean))+
+  geom_line(aes(E,CV), linetype="dashed")+
+  labs(x=bquote("E"/r[0]), y="Y")
 
 
 ```
 
+> **Fig. 11** Recreation of B&H Fig. 3, showing changes in yield (solid) and coefficient of variation of yield (dashed) with increasing effort.
+
 # Reflection Questions
+
+> These results show that managing fisheries for MSY is strongly dependent on the assumptions made about the behavior of fishermen and/or the regulatory environment. Managing a fishery for constant yield will be very different from managing a fishery for constant effort.
+
+> When variance is taken into account, the maximum sustainable *average* yield is less than *r*/2. In order to account for stochastic variations in fish population, it is optimal to harvest at less than the MSY predicted otherwise.
 
