@@ -374,6 +374,7 @@ param_r_opt <- optim(c(10,18,0.5),
                      method="L-BFGS-B", lower=c(0,10,0), upper=c(100,26,1))
 
 param_r_opt
+
 ```
 
 > Unfortunately, we are getting unrealistic estimates of *p_C*. Something is seriously wrong here...
