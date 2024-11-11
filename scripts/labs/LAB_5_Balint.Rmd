@@ -32,7 +32,9 @@ theme <- list(
   theme_classic(),
   scale_color_viridis_d(option="inferno", end=0.8),
   scale_fill_viridis_d(option="inferno", end=0.8),
-  theme(legend.position="right"),
+  theme(legend.position="right",
+        strip.placement="outside",
+        strip.background=element_blank()),
   labs(x="Time")
 )
 
@@ -314,30 +316,163 @@ plot.df <- df %>%
   pivot_longer(!t)
 
 #visualize the simulation results
-ggplot(plot.df, aes(t, value))+
+ggplot(plot.df, aes(t, value, color=name))+
   theme+
-  geom_line()+
+  geom_line(show.legend=FALSE)+
   geom_hline(yintercept=0, linetype="dashed")+
   facet_wrap(.~name, ncol=1, strip.position="left", scales="free_y")+
-  theme(strip.placement="outside",
-        strip.background=element_blank())+
-  labs(y=NULL)
-
-#make two models with different deltas
-data_fit_1 <- data.frame(time=61:110, S=df$S[61:110], R=df$R[62:111])
-
-mle2.m() <- mle2(R ~ dlnorm((1+0)*log(S)+alpha-beta*(S^(1+0)), sdlog=tau_r),
-                 method="BFGS",
-                 control=list(maxit=5000),
-                 data=data_fit_1,
-                 start=list(alpha=2.5, beta=1/2.2, tau_r=0.1))
+  labs(y=NULL)+
+  scale_color_jama()
 
 ```
 
-> **Fig. 4:**
+> **Fig. 4:** Changes in `R` and `S` as fishing nortality (`Fm`) increases. We find that `S` decreases as `Fm` increases, but `R` also increases with `Fm` until mortality begins to excees ~ 0.5 at around the 100 time step. 
+
+```{r}
+
+#make two models with different deltas
+data_fit_1 <- data.frame(time=61:110, S=df$S[61:110], R=df$R[62:111])
+data_fit_2 <- data.frame(time=61:140, S=df$S[61:140], R=df$R[62:141])
+
+suppressWarnings(
+  mle2.m0 <- mle2(R ~ dlnorm((1+0)*log(S) + alpha - beta*(S^(1+0)),sdlog=tau_r),
+                           # method = "SANN",
+                           method = "BFGS",
+                           control = list(maxit = 5000),
+                           data = data_fit_1,
+                           start = list(alpha=2.5,beta=1/2.2,tau_r=0.1))
+)
+
+suppressWarnings(
+ mle2.m1 <- mle2(R ~ dlnorm((1+delta)*log(S) + alpha - beta*(S^(1)),sdlog=tau_r),
+                           # method = "SANN",
+                           method = "BFGS",
+                           control = list(maxit = 5000),
+                           data = data_fit_1,
+                           start = list(alpha=2.5,beta=1/2.2,delta=1.0,tau_r=0.1)) 
+)
+
+anova <- anova(mle2.m0,mle2.m1)
+print(anova)
+summary(anova)
+
+```
+> The differences between these two models are not significant, indicating that the model comparison is unable to distinguish between D = 0.6 and D = 0.0. However, we will run multiple iterations to confirm that result:
+
+```{r}
+library(foreach) #for parellel processing
+library(doParallel) #for parallel processing
+
+#initialize parallel computing
+n_cores <- detectCores()-1 #we'll keep one core free
+cluster <- makeCluster(n_cores, type="FORK") #fork works better than snow on my machine
+registerDoParallel(cl = cluster)
+
+n_iter=500
+  
+#run for loop in parallel
+p_values <- foreach (i=1:n_iter, .combine=c) %dopar%{
+  
+  df <- simulation(S=0.8, Fm=0, dFm=0.005, mu=mu, n_burn=50, n_iter=150)
+  
+  data_fit <- data.frame(time=61:110, S=df$S[61:110], R=df$R[62:111])
+  
+  suppressWarnings(
+       mle2.m0 <- mle2(R ~ dlnorm((1+0)*log(S) + alpha - beta*(S^(1+0)),sdlog=tau_r),
+                         # method = "SANN",
+                         method = "BFGS",
+                         control = list(maxit = 5000),
+                         data = data_fit,
+                         start = list(alpha=2.5,beta=1/2.2,tau_r=0.1)) 
+  )
+  
+  suppressWarnings(
+       mle2.m1 <- mle2(R ~ dlnorm((1+delta)*log(S) + alpha - beta*(S^(1)),sdlog=tau_r),
+                         # method = "SANN",
+                         method = "BFGS",
+                         control = list(maxit = 5000),
+                         data = data_fit,
+                         start = list(alpha=2.5,beta=1/2.2,delta=1.0,tau_r=0.1))
+  )
+  
+  #do the anova
+  anova <- anova(mle2.m0,mle2.m1)
+  
+  anova[2,5]
+   
+}
+  
+  
+plot.df <- data.frame(p_value=p_values)
+
+ggplot(plot.df, aes(p_value))+
+  theme+
+  geom_histogram(color="black", fill="grey")+
+  scale_y_continuous(expand=expansion(mult=c(0,0.05)))+
+  labs(y="Count", x="p value")+
+  geom_vline(xintercept=0.05, linetype="dashed")
+  
+
+```
+
+> **Fig. 5:** Histogram of p values from an ANOVA between a model with `D` = 0.0 and `D` = 0.6. Statistical significance (p < 0.05) is indicated by the vertical dashed line. In almost all cases, the models are not significantly different.
 
 # Extension
 
+```{r}
+  
+#run for loop in parallel
+p_values_2 <- foreach (i=1:n_iter, .combine=c) %dopar%{
+  
+  df <- simulation(S=0.8, Fm=0, dFm=0.005, mu=mu, n_burn=50, n_iter=150)
+  
+  data_fit <- data.frame(time=61:140, S=df$S[61:140], R=df$R[62:141])
+  
+  suppressWarnings(
+       mle2.m0 <- mle2(R ~ dlnorm((1+0)*log(S) + alpha - beta*(S^(1+0)),sdlog=tau_r),
+                         # method = "SANN",
+                         method = "BFGS",
+                         control = list(maxit = 5000),
+                         data = data_fit,
+                         start = list(alpha=2.5,beta=1/2.2,tau_r=0.1)) 
+  )
+  
+  suppressWarnings(
+       mle2.m1 <- mle2(R ~ dlnorm((1+delta)*log(S) + alpha - beta*(S^(1)),sdlog=tau_r),
+                         # method = "SANN",
+                         method = "BFGS",
+                         control = list(maxit = 5000),
+                         data = data_fit,
+                         start = list(alpha=2.5,beta=1/2.2,delta=1.0,tau_r=0.1))
+  )
+  
+  #do the anova
+  anova <- anova(mle2.m0,mle2.m1)
+  
+  anova[2,5]
+   
+}
 
+plot.df <- data.frame(run1=p_values,
+                      run2=p_values_2) %>%
+  pivot_longer(cols=c("run1", "run2")) %>%
+  mutate(name=factor(name, labels=c("Normal","Point of no return!")))
+
+ggplot(plot.df, aes(value, fill=name))+
+  theme+
+  geom_histogram(color="black", alpha=0.5, show.legend=FALSE)+
+  scale_y_continuous(expand=expansion(mult=c(0,0.05)))+
+  labs(y="Count", x="p-value")+
+  geom_vline(xintercept=0.05, linetype="dashed")+
+  facet_wrap(.~name, ncol=1, strip.position="left", scales="free_y")
+
+#end the cluster to keep my computer happy
+stopCluster(cluster)
+
+```
+
+> **Fig. 6:** Histogram of p values from an ANOVA between a model with `D` = 0.0 and `D` = 0.6 when using data closer to the "point of no return" (bottom). Statistical significance (p < 0.05) is indicated by the vertical dashed line. Closer to the point of no return, we can observe a significant difference between the models most of the time, indicating that the semisiodal growth model is producing different results.
 
 # Reflection
+
+> Stochastic variability has a strong effect on whether and when a population crashes in response to fishing pressures, particularly in the context of a semosiodal growth model with a minimum viable population size. Quantifying the natural variability that would be expected in a population, and potentially adjusting quotas to match that variability on an annual basis, is crucially important for fishery managers.
