@@ -23,6 +23,7 @@ library(readxl)
 ```
 
 ```{r,include=FALSE}
+library(tidyverse)
 library(readxl)
 ```
 
@@ -79,14 +80,12 @@ So we make one more modification on the rows.
 
 ```{r}
 data_sockeye_seymour <- data_sockeye[data_sockeye$stk == "Seymour",]
-data_sockeye_seymour <- data_sockeye_seymour[data_sockeye$yr < 2006,]
+data_sockeye_seymour <- data_sockeye_seymour[data_sockeye_seymour$yr < 2006,]
 ```
 
 Then, if you dig through the supplemental code, you will see that the data frame column names get reworked at some point.
 
 ```{r}
-data_sockeye_seymour <- data_sockeye[data_sockeye$stk == "Seymour",]
-data_sockeye_seymour <- data_sockeye_seymour[data_sockeye_seymour$yr < 2006,]
 data_sockeye_seymour <- data_sockeye_seymour[,c("yr","rec","eff")]
 names(data_sockeye_seymour) <- c("year","recruits","spawners")
 ```
@@ -119,7 +118,6 @@ head(data_sockeye_seymour)
 Now we can use `ggplot`. Recall that once we tell ggplot which data frame we are starting with, we can refer to columns just by their name.
 
 ```{r}
-library(ggplot2)
 ggplot(data=data_sockeye_seymour,aes(x=spawners,y=recruits)) +
   geom_point(aes(color=data_segment))
 ```
@@ -132,7 +130,9 @@ g_1 <- ggplot(data=data_sockeye_seymour,aes(x=spawners,y=recruits)) +
   scale_color_manual(values=c("blue","red"),breaks=c("1948-1976","1977-2005")) +
   scale_shape_manual(values=c(2,6),breaks=c("1948-1976","1977-2005")) +
   labs(x="Spawners (x 10^6)",y="Recruits (x 10^6)",color="",shape="") +
-  theme_bw() + theme(legend.position = c(0.125, 0.875))
+  theme_bw() +
+  theme(legend.position="inside",
+        legend.position.inside = c(0.125, 0.875))
 
 print(g_1)
 ```
@@ -288,4 +288,24 @@ ggplot(modeled_seymour_recruits,aes(x=observed,y=predicted)) +
   scale_shape_manual(values=c(2,6),breaks=c("1948-1976","1977-2005")) +
   labs(x="Observed Recruits (x 10^6)",y="Predicted Recruits (x 10^6)",color="",shape="") +
   theme_bw() + theme(legend.position = c(0.875, 0.875))
+```
+
+
+```{r}
+cor(modeled_seymour_recruits$observed,
+    modeled_seymour_recruits$predicted)
+
+#calculate RMSE
+sqrt(mean((modeled_seymour_recruits$observed - modeled_seymour_recruits$predicted)^2))
+
+```
+
+
+```{r}
+library(rEDM)
+
+#another way to calculate RMSE
+ComputeError(modeled_seymour_recruits$observed,
+             modeled_seymour_recruits$predicted)
+
 ```
